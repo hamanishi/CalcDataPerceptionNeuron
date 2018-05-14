@@ -31,7 +31,8 @@ namespace Neuron
 	{
 		public static int MaxFrameDataLength
 		{
-			get { return ( (int)NeuronBones.NumOfBones + 1 ) * 6; }
+			//get { return ( (int)NeuronBones.NumOfBones + 1 ) * 16; }
+			get { return 21 * 16 + 2; }
 		}
 	
 		public delegate bool 							NoFrameDataDelegate();
@@ -40,6 +41,7 @@ namespace Neuron
 		static float									NeuronUnityLinearScale = 0.01f;
 	
 		BvhDataHeader									header;
+		CalcDataHeader									CalcdHeader;
 		float[]											data = new float[MaxFrameDataLength];
 		List<NoFrameDataDelegate>						noFrameDataCallbacks = new List<NoFrameDataDelegate>();
 		List<ResumeFrameDataDelegate>					resumeFrameDataCallbacks = new List<ResumeFrameDataDelegate>();
@@ -110,19 +112,36 @@ namespace Neuron
 			}
 		}
 		
-		public void OnReceivedMotionData( BvhDataHeader header, IntPtr data )
+//		public void OnReceivedMotionData( BvhDataHeader header, IntPtr data )
+//		{
+//			this.header = header;
+//			try
+//			{
+//				Marshal.Copy( data, this.data, 0, (int)header.DataCount );
+//				timeStamp = GetTimeStamp();
+//			}
+//			catch( Exception e )
+//			{
+//				Debug.LogException( e );
+//			}
+//		}
+		
+		public void OnReceivedMotionData( CalcDataHeader header, IntPtr data )
 		{
-			this.header = header;
+			this.CalcdHeader = header;
 			try
 			{
-				Marshal.Copy( data, this.data, 0, (int)header.DataCount );
+//				Debug.Log("header::" + header.DataCount + "," + header.FrameIndex + ",name "+header.AvatarName);
+				//Marshal.Copy( data, this.data, 0, (int)header.DataCount );
+				Marshal.Copy(data, this.data, 0, 338);
 				timeStamp = GetTimeStamp();
 			}
 			catch( Exception e )
 			{
 				Debug.LogException( e );
 			}
-		}
+		}		
+		
 				
 		public virtual void OnNoFrameData( NeuronActor actor )
 		{
@@ -150,26 +169,106 @@ namespace Neuron
 			return header;
 		}
 		
+		public CalcDataHeader GetCalcHeader()
+		{
+			return CalcdHeader;
+		}
+		
 		public static int GetTimeStamp()
 		{
 			return DateTime.Now.Hour * 3600 * 1000 + DateTime.Now.Minute * 60 * 1000 + DateTime.Now.Second * 1000 + DateTime.Now.Millisecond;
 		}
 		
-		public Vector3 GetReceivedPosition( NeuronBones bone )
+//		public Vector3 GetReceivedPosition( NeuronBones bone )
+//		{
+//			Debug.Log("getreceive postion:" + bone);
+//			int offset = 0;
+//			if( header.bWithReference != 0 )
+//			{
+//				// skip reference
+//				offset += 6;
+//			}
+//			
+//			// got bone position data only when displacement is open or the bone is hips
+//			if( header.bWithDisp != 0 || bone == NeuronBones.Hips )
+//			{
+//				// Hips position + Hips rotation + 58 * ( position + rotation )
+//				offset += (int)bone * 6;
+//				return new Vector3( -data[offset] * NeuronUnityLinearScale, data[offset+1] * NeuronUnityLinearScale, data[offset+2] * NeuronUnityLinearScale );
+//			}
+//			
+//			return Vector3.zero;
+//		}
+		
+		public Vector3 GetCalcReceivedPosition( NeuronBones bone)
 		{
-			int offset = 0;
+			//Debug.Log("getcalcreceive postion:" + bone);
+			var offset = 0;
 			if( header.bWithReference != 0 )
 			{
 				// skip reference
-				offset += 6;
+				offset += 16; //6;
 			}
-			
+
+			Debug.Log("header:" + header.bWithDisp+", off:"+offset);
+			Debug.Log("data:" + data.Length + "," + dataCount);
 			// got bone position data only when displacement is open or the bone is hips
-			if( header.bWithDisp != 0 || bone == NeuronBones.Hips )
+			//if( header.bWithDisp != 0 || bone == NeuronBones.Hips )
+			if( header.bWithDisp == 0 || bone == NeuronBones.Hips )
 			{
 				// Hips position + Hips rotation + 58 * ( position + rotation )
-				offset += (int)bone * 6;
-				return new Vector3( -data[offset] * NeuronUnityLinearScale, data[offset+1] * NeuronUnityLinearScale, data[offset+2] * NeuronUnityLinearScale );
+				offset += (int)bone * 16;
+				var p = new Vector3(
+					-this.data[offset],
+					-this.data[offset+2],
+					this.data[offset+1]
+				);
+//								var p = new Vector3(
+//					-this.data[offset] * NeuronUnityLinearScale,
+//					this.data[offset+1] * NeuronUnityLinearScale,
+//					this.data[offset+2] * NeuronUnityLinearScale 
+//				);
+
+				offset += 3;
+				var v = new Vector3(
+					this.data[offset],
+					this.data[offset+1],
+					this.data[offset+2]
+				);
+				offset += 3;
+				var a = new Vector3(
+					this.data[offset],
+					this.data[offset+1],
+					this.data[offset+2]
+				);
+				offset += 3;
+				var q = new Quaternion(
+					this.data[offset+1],
+					this.data[offset+2],
+					this.data[offset+3],
+					this.data[offset]
+				);
+				offset += 4;
+				var g = new Vector3(
+					this.data[offset],
+					this.data[offset+1],
+					this.data[offset+2]
+				);
+					
+				// contact on ground: right->left
+				offset += 3;
+				var right = data[offset] * NeuronUnityLinearScale;
+				var left = data[offset + 1] * NeuronUnityLinearScale;
+				
+				Debug.Log("foot:" + right + ","+ left);
+				Debug.Log("getreceived position :"+
+				          "p:" + p.x +"," + p.y +"," +p.z +"," +  
+				          "v:" + v.x +"," + v.y +"," +v.z +"," +  
+				          "a:" + a.x +"," + a.y +"," +a.z +"," +  
+				          "q:" + q.x +"," + q.y +"," +q.z +"," + q.w +"," +  
+				          "g:" + g.x +"," + g.y +"," +g.z  
+				          );
+				return p;
 			}
 			
 			return Vector3.zero;

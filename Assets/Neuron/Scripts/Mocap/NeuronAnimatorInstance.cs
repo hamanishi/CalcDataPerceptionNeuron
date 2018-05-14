@@ -164,9 +164,9 @@ public class NeuronAnimatorInstance : NeuronInstance
 
         // apply Hips position
 		if (hipsMove) {
-			Vector3 hipPos = actor.GetReceivedPosition (NeuronBones.Hips);
-			SetPosition (animator, HumanBodyBones.Hips, new Vector3(hipPos.x, hipPos.y + hipOffset, hipPos.z) ); // + positionOffsets [(int)HumanBodyBones.Hips]);
-			SetRotation (animator, HumanBodyBones.Hips, actor.GetReceivedRotation (NeuronBones.Hips));
+//			Vector3 hipPos = actor.GetReceivedPosition (NeuronBones.Hips);
+			//SetPosition (animator, HumanBodyBones.Hips, new Vector3(hipPos.x, hipPos.y + hipOffset, hipPos.z) ); // + positionOffsets [(int)HumanBodyBones.Hips]);
+			//SetRotation (animator, HumanBodyBones.Hips, actor.GetReceivedRotation (NeuronBones.Hips));
 		}
 
         // apply positions

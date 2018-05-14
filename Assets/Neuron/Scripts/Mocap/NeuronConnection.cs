@@ -204,13 +204,13 @@ namespace Neuron
 
         static void RegisterReaderCallbacks()
         {
-            NeuronDataReader.BRRegisterFrameDataCallback(IntPtr.Zero, OnFrameDataReceived);
+            NeuronDataReader.BRRegisterFrameDataCallback(IntPtr.Zero, (CalcFrameDataReceived)OnFrameDataReceived);
             NeuronDataReader.BRRegisterSocketStatusCallback(IntPtr.Zero, OnSocketStatusChanged);
         }
 
         static void UnregisterReaderCallbacks()
         {
-            NeuronDataReader.BRRegisterFrameDataCallback(IntPtr.Zero, null);
+            NeuronDataReader.BRRegisterFrameDataCallback(IntPtr.Zero, (CalcFrameDataReceived)null);
             NeuronDataReader.BRRegisterSocketStatusCallback(IntPtr.Zero, null);
         }
 
@@ -219,7 +219,8 @@ namespace Neuron
             NeuronSource source = FindSource(socketReference);
             if (source != null)
             {
-                source.OnFrameDataReceived(header, data);
+                //source.OnFrameDataReceived(header, data);
+                source.OnCalcFrameDataReceived(header, data);
             }
         }
 

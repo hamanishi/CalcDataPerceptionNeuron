@@ -23,218 +23,280 @@ using NeuronDataReaderManaged;
 
 namespace Neuron
 {
-	public class NeuronTransformsInstance : NeuronInstance
-	{	
-		public Transform					root = null;
-		public string						prefix = "Robot_";
-		public bool							boundTransforms { get ; private set; }
-		public bool							physicalUpdate = false;
-		
-		public Transform[]					transforms = new Transform[(int)NeuronBones.NumOfBones];
-		NeuronTransformsPhysicalReference	physicalReference = new NeuronTransformsPhysicalReference();
-		Vector3[]							bonePositionOffsets = new Vector3[(int)NeuronBones.NumOfBones];
-		Vector3[]							boneRotationOffsets = new Vector3[(int)NeuronBones.NumOfBones];
-		
-		public NeuronTransformsInstance()
-		{
-		}
-		
-		public NeuronTransformsInstance( string address, int port, int commandServerPort, NeuronConnection.SocketType socketType, int actorID )
-			:base( address, port, commandServerPort, socketType, actorID )
-		{
-		}
-		
-		public NeuronTransformsInstance( Transform root, string prefix, string address, int port, int commandServerPort, NeuronConnection.SocketType socketType, int actorID )
-			:base( address, port, commandServerPort, socketType, actorID )
-		{
-			Bind( root, prefix );
-		}
-		
-		public NeuronTransformsInstance( Transform root, string prefix, NeuronActor actor )
-			:base( actor )
-		{
-			Bind( root, prefix );
-		}
-		
-		public NeuronTransformsInstance( NeuronActor actor )
-			:base( actor )
-		{
-		}
-		
-		new void OnEnable()
-		{
-			base.OnEnable();
-			
-			if( root == null )
-			{
-				root = transform;
-			}
-			
-			Bind( root, prefix );
-		}
-		
-		new void Update()
-		{
-			base.ToggleConnect();
-			base.Update();
-			
-			if( boundActor != null && boundTransforms && !physicalUpdate )
-			{				
-				if( physicalReference.Initiated() )
-				{
-					ReleasePhysicalContext();
-				}
-				
-				ApplyMotion( boundActor, transforms, bonePositionOffsets, boneRotationOffsets, hipHeightOffset );
-			}
-		}
-		
-		void FixedUpdate()
-		{
-			base.ToggleConnect();
-			
-			if( boundActor != null && boundTransforms && physicalUpdate )
-			{				
-				if( !physicalReference.Initiated() )
-				{
-					physicalUpdate = InitPhysicalContext();
-				}
-				
-				ApplyMotionPhysically( physicalReference.GetReferenceTransforms(), transforms );
-			}
-		}
-		
-		public Transform[] GetTransforms()
-		{
-			return transforms;
-		}
-		
-		static bool ValidateVector3( Vector3 vec )
-		{
-			return !float.IsNaN( vec.x ) && !float.IsNaN( vec.y ) && !float.IsNaN( vec.z )
-				&& !float.IsInfinity( vec.x ) && !float.IsInfinity( vec.y ) && !float.IsInfinity( vec.z );
-		}
-		
-		// set position for bone
-		static void SetPosition( Transform[] transforms, NeuronBones bone, Vector3 pos )
-		{
-			Transform t = transforms[(int)bone];
-			if( t != null )
-			{
-				// calculate position when we have scale
-				pos.Scale( new Vector3( 1.0f / t.parent.lossyScale.x, 1.0f / t.parent.lossyScale.y, 1.0f / t.parent.lossyScale.z ) );
-			
-				if( !float.IsNaN( pos.x ) && !float.IsNaN( pos.y ) && !float.IsNaN( pos.z ) )
-				{
-					t.localPosition = pos;
-				}
-			}
-		}
-		
-		// set rotation for bone
-		static void SetRotation( Transform[] transforms, NeuronBones bone, Vector3 rotation )
-		{
-			Transform t = transforms[(int)bone];
-			if( t != null )
-			{
-				Quaternion rot = Quaternion.Euler( rotation );
-				if( !float.IsNaN( rot.x ) && !float.IsNaN( rot.y ) && !float.IsNaN( rot.z ) && !float.IsNaN( rot.w ) )
-				{
-					t.localRotation = rot;
-				}
-			}
-		}
-		
-		// apply transforms extracted from actor mocap data to bones
-		public static void ApplyMotion( NeuronActor actor, Transform[] transforms, Vector3[] bonePositionOffsets, Vector3[] boneRotationOffsets, float hipOffset )
-		{			
-			// apply Hips position
-			Vector3 hipPos = actor.GetReceivedPosition (NeuronBones.Hips);
-			SetPosition (transforms, NeuronBones.Hips, new Vector3 (hipPos.x, hipPos.y + hipOffset, hipPos.z)); // actor.GetReceivedPosition( NeuronBones.Hips ) );
-			SetRotation( transforms, NeuronBones.Hips, actor.GetReceivedRotation( NeuronBones.Hips ) );
-			
-			// apply positions
-			if( actor.withDisplacement )
-			{
-				for( int i = 1; i < (int)NeuronBones.NumOfBones && i < transforms.Length; ++i )
-				{
-				//	SetPosition( transforms, (NeuronBones)i, actor.GetReceivedPosition( (NeuronBones)i ));// + bonePositionOffsets[i] );
-					SetRotation( transforms, (NeuronBones)i, actor.GetReceivedRotation( (NeuronBones)i ));// + boneRotationOffsets[i] );
-				}
-			}
-			else
-			{
-				// apply rotations
-				for( int i = 1; i < (int)NeuronBones.NumOfBones && i < transforms.Length; ++i )
-				{
-					SetRotation( transforms, (NeuronBones)i, actor.GetReceivedRotation( (NeuronBones)i ) );
-				}
-			}
-		}
-		
-		// apply Transforms of src bones to dest Rigidbody Components of bone
-		public static void ApplyMotionPhysically( Transform[] src, Transform[] dest )
-		{
-			if( src != null && dest != null )
-			{
-				for( int i = 0; i < (int)NeuronBones.NumOfBones; ++i )
-				{
-					Transform src_transform = src[i];
-					Transform dest_transform = dest[i];
-					if( src_transform != null && dest_transform != null )
-					{
-						Rigidbody rigidbody = dest_transform.GetComponent<Rigidbody>();
-						if( rigidbody != null )
-						{
-							rigidbody.MovePosition( src_transform.position );
-							rigidbody.MoveRotation( src_transform.rotation );
-						}
-					}
-				}
-			}
-		}
-		
-		public bool Bind( Transform root, string prefix )
-		{
-			this.root = root;
-			this.prefix = prefix;
-			int bound_count = NeuronHelper.Bind( root, transforms, prefix, false );
-			boundTransforms = bound_count >= (int)NeuronBones.NumOfBones;
-			UpdateOffset();
-			return boundTransforms;
-		}
-		
-		bool InitPhysicalContext()
-		{
-			if( physicalReference.Init( root, prefix, transforms ) )
-			{
-				// break original object's hierachy of transforms, so we can use MovePosition() and MoveRotation() to set transform
-				NeuronHelper.BreakHierarchy( transforms );
-				return true;
-			}
-			
-			return false;
-		}
-		
-		void ReleasePhysicalContext()
-		{
-			physicalReference.Release();
-		}
-		
-		void UpdateOffset()
-		{
-			// initiate values
-			for( int i = 0; i < (int)HumanBodyBones.LastBone; ++i )
-			{
-				bonePositionOffsets[i] = Vector3.zero;
-				boneRotationOffsets[i] = Vector3.zero;
-			}
-			
-			if( boundTransforms )
-			{
-				bonePositionOffsets[(int)NeuronBones.LeftUpLeg] = new Vector3( 0.0f, transforms[(int)NeuronBones.LeftUpLeg].localPosition.y, 0.0f );
-				bonePositionOffsets[(int)NeuronBones.RightUpLeg] = new Vector3( 0.0f, transforms[(int)NeuronBones.RightUpLeg].localPosition.y, 0.0f );
-			}
-		}
-	}
+    public class NeuronTransformsInstance : NeuronInstance
+    {
+        public Transform root = null;
+        public string prefix = "Robot_";
+        public bool boundTransforms { get; private set; }
+        public bool physicalUpdate = false;
+
+        public Transform[] transforms = new Transform[(int) NeuronBones.NumOfBones];
+        NeuronTransformsPhysicalReference physicalReference = new NeuronTransformsPhysicalReference();
+        Vector3[] bonePositionOffsets = new Vector3[(int) NeuronBones.NumOfBones];
+        Vector3[] boneRotationOffsets = new Vector3[(int) NeuronBones.NumOfBones];
+
+        public bool isBvh = true;        
+        public NeuronTransformsInstance()
+        {
+        }
+
+        public NeuronTransformsInstance(string address, int port, int commandServerPort,
+            NeuronConnection.SocketType socketType, int actorID)
+            : base(address, port, commandServerPort, socketType, actorID)
+        {
+        }
+
+        public NeuronTransformsInstance(Transform root, string prefix, string address, int port, int commandServerPort,
+            NeuronConnection.SocketType socketType, int actorID)
+            : base(address, port, commandServerPort, socketType, actorID)
+        {
+            Bind(root, prefix);
+        }
+
+        public NeuronTransformsInstance(Transform root, string prefix, NeuronActor actor)
+            : base(actor)
+        {
+            Bind(root, prefix);
+        }
+
+        public NeuronTransformsInstance(NeuronActor actor)
+            : base(actor)
+        {
+        }
+
+        new void OnEnable()
+        {
+            base.OnEnable();
+
+            if (root == null)
+            {
+                root = transform;
+            }
+
+            Bind(root, prefix);          
+        }
+
+        new void Update()
+        {
+            base.ToggleConnect();
+            base.Update();
+
+            if (boundActor != null && boundTransforms && !physicalUpdate)
+            {
+                if (physicalReference.Initiated())
+                {
+                    ReleasePhysicalContext();
+                }
+
+                //ApplyMotion( boundActor, transforms, bonePositionOffsets, boneRotationOffsets, hipHeightOffset );
+                ApplyCalcMotion(boundActor, transforms, bonePositionOffsets, boneRotationOffsets, hipHeightOffset);
+            }
+        }
+
+        void FixedUpdate()
+        {
+            base.ToggleConnect();
+
+            if (boundActor != null && boundTransforms && physicalUpdate)
+            {
+                if (!physicalReference.Initiated())
+                {
+                    physicalUpdate = InitPhysicalContext();
+                }
+
+                ApplyMotionPhysically(physicalReference.GetReferenceTransforms(), transforms);
+            }
+        }
+
+        public Transform[] GetTransforms()
+        {
+            return transforms;
+        }
+
+        static bool ValidateVector3(Vector3 vec)
+        {
+            return !float.IsNaN(vec.x) && !float.IsNaN(vec.y) && !float.IsNaN(vec.z)
+                   && !float.IsInfinity(vec.x) && !float.IsInfinity(vec.y) && !float.IsInfinity(vec.z);
+        }
+
+        // set position for bone
+        static void SetPosition(Transform[] transforms, NeuronBones bone, Vector3 pos)
+        {
+            //Debug.Log("set postion :" + bone);
+            Transform t = transforms[(int) bone];
+            if (t != null)
+            {
+                // calculate position when we have scale
+                pos.Scale(new Vector3(1.0f / t.parent.lossyScale.x, 1.0f / t.parent.lossyScale.y,
+                    1.0f / t.parent.lossyScale.z));
+
+                if (!float.IsNaN(pos.x) && !float.IsNaN(pos.y) && !float.IsNaN(pos.z))
+                {
+                    t.localPosition = pos;
+                }
+            }
+        }
+
+        // set rotation for bone
+        static void SetRotation(Transform[] transforms, NeuronBones bone, Vector3 rotation)
+        {
+            //Debug.Log("set rotation:" + bone);
+            Transform t = transforms[(int) bone];
+            if (t != null)
+            {
+                Quaternion rot = Quaternion.Euler(rotation);
+                if (!float.IsNaN(rot.x) && !float.IsNaN(rot.y) && !float.IsNaN(rot.z) && !float.IsNaN(rot.w))
+                {
+                    t.localRotation = rot;
+                }
+            }
+        }
+
+        // apply transforms extracted from actor mocap data to bones
+//		public static void ApplyMotion( NeuronActor actor, Transform[] transforms, Vector3[] bonePositionOffsets, Vector3[] boneRotationOffsets, float hipOffset )
+//		{			
+//			// apply Hips position
+//			Vector3 hipPos = actor.GetReceivedPosition (NeuronBones.Hips);
+//			SetPosition (transforms, NeuronBones.Hips, new Vector3 (hipPos.x, hipPos.y + hipOffset, hipPos.z)); // actor.GetReceivedPosition( NeuronBones.Hips ) );
+//			SetRotation( transforms, NeuronBones.Hips, actor.GetReceivedRotation( NeuronBones.Hips ) );
+//			
+//			// apply positions
+//			if( actor.withDisplacement )
+//			{
+//				for( int i = 1; i < (int)NeuronBones.NumOfBones && i < transforms.Length; ++i )
+//				{
+//
+//					SetRotation( transforms, (NeuronBones)i, actor.GetReceivedRotation( (NeuronBones)i ));
+//				}
+//			}
+//			else
+//			{
+//				// apply rotations
+//				for( int i = 1; i < (int)NeuronBones.NumOfBones && i < transforms.Length; ++i )
+//				{
+//					SetRotation( transforms, (NeuronBones)i, actor.GetReceivedRotation( (NeuronBones)i ) );
+//				}
+//			}
+//		}
+
+        // apply transforms extracted from actor mocap data to bones
+        public static void ApplyCalcMotion(NeuronActor actor, Transform[] transforms, Vector3[] bonePositionOffsets,
+            Vector3[] boneRotationOffsets, float hipOffset)
+        {
+            // apply Hips position
+            Vector3 hipPos = actor.GetCalcReceivedPosition(NeuronBones.Hips);
+
+            SetPosition(transforms, NeuronBones.Hips,
+                new Vector3(hipPos.x, hipPos.y + hipOffset,
+                    hipPos.z)); // actor.GetReceivedPosition( NeuronBones.Hips ) );
+            //SetRotation( transforms, NeuronBones.Hips, actor.GetReceivedRotation( NeuronBones.Hips ) );
+
+
+            //Debug.Log("transform length:" + transforms.Length);
+            //for (var i = 1; i < 22 && i < transforms.Length; i++)
+            for (var i = 1; i < 21; i++)
+            {
+                Debug.Log("i:"+ i);
+
+                GameObject.Find("debug").GetComponent<debugJoints>().joints[i].transform.position = actor.GetCalcReceivedPosition((NeuronBones) i);
+                GameObject.Find("debug").GetComponent<debugJoints>().lines[i].positionCount = 2;
+                
+//                SetPosition(
+//                    transforms,
+//                    (NeuronBones) i,
+//                    actor.GetCalcReceivedPosition((NeuronBones) i)
+//                );
+                //					SetRotation( transforms, (NeuronBones)i, actor.GetReceivedRotation( (NeuronBones)i ) );
+            }
+
+//
+//            // apply positions
+//            if (actor.withDisplacement)
+//            {
+//                Debug.Log("hoge:" + transforms.Length);
+//                for (int i = 1; i < (int) NeuronBones.NumOfBones && i < transforms.Length; ++i)
+//                {
+//                    SetPosition(transforms, (NeuronBones) i, actor.GetCalcReceivedPosition((NeuronBones) i));
+//                    //SetRotation( transforms, (NeuronBones)i, actor.GetReceivedRotation( (NeuronBones)i ));
+//                }
+//            }
+//            else
+//            {
+//                //Debug.Log("huga:"+transforms.Length);
+//                // apply rotations
+//                for (int i = 1; i < (int) NeuronBones.NumOfBones && i < transforms.Length; ++i)
+//                {
+//                    SetPosition(transforms, (NeuronBones) i, actor.GetCalcReceivedPosition((NeuronBones) i));
+////					SetRotation( transforms, (NeuronBones)i, actor.GetReceivedRotation( (NeuronBones)i ) );
+//                }
+//            }
+        }
+
+        // apply Transforms of src bones to dest Rigidbody Components of bone
+        public static void ApplyMotionPhysically(Transform[] src, Transform[] dest)
+        {
+            if (src != null && dest != null)
+            {
+                for (int i = 0; i < (int) NeuronBones.NumOfBones; ++i)
+                {
+                    Transform src_transform = src[i];
+                    Transform dest_transform = dest[i];
+                    if (src_transform != null && dest_transform != null)
+                    {
+                        Rigidbody rigidbody = dest_transform.GetComponent<Rigidbody>();
+                        if (rigidbody != null)
+                        {
+                            rigidbody.MovePosition(src_transform.position);
+                            rigidbody.MoveRotation(src_transform.rotation);
+                        }
+                    }
+                }
+            }
+        }
+
+        public bool Bind(Transform root, string prefix)
+        {
+            this.root = root;
+            this.prefix = prefix;
+            int bound_count = NeuronHelper.Bind(root, transforms, prefix, false);
+            boundTransforms = bound_count >= (int) NeuronBones.NumOfBones;
+            UpdateOffset();
+            return boundTransforms;
+        }
+
+        bool InitPhysicalContext()
+        {
+            if (physicalReference.Init(root, prefix, transforms))
+            {
+                // break original object's hierachy of transforms, so we can use MovePosition() and MoveRotation() to set transform
+                NeuronHelper.BreakHierarchy(transforms);
+                return true;
+            }
+
+            return false;
+        }
+
+        void ReleasePhysicalContext()
+        {
+            physicalReference.Release();
+        }
+
+        void UpdateOffset()
+        {
+            // initiate values
+            for (int i = 0; i < (int) HumanBodyBones.LastBone; ++i)
+            {
+                bonePositionOffsets[i] = Vector3.zero;
+                boneRotationOffsets[i] = Vector3.zero;
+            }
+
+            if (boundTransforms)
+            {
+                bonePositionOffsets[(int) NeuronBones.LeftUpLeg] = new Vector3(0.0f,
+                    transforms[(int) NeuronBones.LeftUpLeg].localPosition.y, 0.0f);
+                bonePositionOffsets[(int) NeuronBones.RightUpLeg] = new Vector3(0.0f,
+                    transforms[(int) NeuronBones.RightUpLeg].localPosition.y, 0.0f);
+            }
+        }
+    }
 }
