@@ -86,6 +86,24 @@ namespace NeuronDataReaderManaged
         public ushort Token2; // Package end token: 0x99FF
     };
 
+    public struct CalcDataBody
+    {
+        public Vector3 position;
+        public Vector3 velocity;
+        public Vector3 accelaration;
+        public Quaternion quaternion;
+        public Vector3 gyro;
+
+        public CalcDataBody(Vector3 p, Vector3 v, Vector3 a, Quaternion q, Vector3 g)
+        {
+            position = p;
+            velocity = v;
+            accelaration = a;
+            quaternion = q;
+            gyro = g;
+        }
+    }
+
 
     public enum CmdId
     {

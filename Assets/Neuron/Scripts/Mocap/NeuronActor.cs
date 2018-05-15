@@ -200,7 +200,7 @@ namespace Neuron
 //			return Vector3.zero;
 //		}
 		
-		public Vector3 GetCalcReceivedPosition( NeuronBones bone)
+		public CalcDataBody GetCalcReceivedPosition( NeuronBones bone)
 		{
 			//Debug.Log("getcalcreceive postion:" + bone);
 			var offset = 0;
@@ -210,8 +210,8 @@ namespace Neuron
 				offset += 16; //6;
 			}
 
-			Debug.Log("header:" + header.bWithDisp+", off:"+offset);
-			Debug.Log("data:" + data.Length + "," + dataCount);
+			//Debug.Log("header:" + header.bWithDisp+", off:"+offset);
+			//Debug.Log("data:" + data.Length + "," + dataCount);
 			// got bone position data only when displacement is open or the bone is hips
 			//if( header.bWithDisp != 0 || bone == NeuronBones.Hips )
 			if( header.bWithDisp == 0 || bone == NeuronBones.Hips )
@@ -268,10 +268,10 @@ namespace Neuron
 				          "q:" + q.x +"," + q.y +"," +q.z +"," + q.w +"," +  
 				          "g:" + g.x +"," + g.y +"," +g.z  
 				          );
-				return p;
+				return new CalcDataBody(p,v,a,q,g);
 			}
-			
-			return Vector3.zero;
+
+			return new CalcDataBody();
 		}
 		
 		public Vector3 GetReceivedRotation( NeuronBones bone )

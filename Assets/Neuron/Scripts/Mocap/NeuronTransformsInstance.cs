@@ -184,11 +184,11 @@ namespace Neuron
             Vector3[] boneRotationOffsets, float hipOffset)
         {
             // apply Hips position
-            Vector3 hipPos = actor.GetCalcReceivedPosition(NeuronBones.Hips);
+            var hipPos = actor.GetCalcReceivedPosition(NeuronBones.Hips);
 
             SetPosition(transforms, NeuronBones.Hips,
-                new Vector3(hipPos.x, hipPos.y + hipOffset,
-                    hipPos.z)); // actor.GetReceivedPosition( NeuronBones.Hips ) );
+                new Vector3(hipPos.position.x, hipPos.position.y + hipOffset,
+                    hipPos.position.z)); // actor.GetReceivedPosition( NeuronBones.Hips ) );
             //SetRotation( transforms, NeuronBones.Hips, actor.GetReceivedRotation( NeuronBones.Hips ) );
 
 
@@ -196,10 +196,22 @@ namespace Neuron
             //for (var i = 1; i < 22 && i < transforms.Length; i++)
             for (var i = 1; i < 21; i++)
             {
-                Debug.Log("i:"+ i);
+                //Debug.Log("i:"+ i);
 
-                GameObject.Find("debug").GetComponent<debugJoints>().joints[i].transform.position = actor.GetCalcReceivedPosition((NeuronBones) i);
-                GameObject.Find("debug").GetComponent<debugJoints>().lines[i].positionCount = 2;
+                var calc = actor.GetCalcReceivedPosition((NeuronBones) i);
+                GameObject.Find("debug").GetComponent<debugJoints>().joints[i].transform.position = calc.position;
+
+                var lb = GameObject.Find("debug").GetComponent<debugJoints>().linesBuf[i];
+                lb.Dequeue();
+                //GameObject.Find("debug").GetComponent<debugJoints>().linesBuf[i].Enqueue(calc.position);
+                //Debug.LogError("time:::"+Time.time%100);
+                //Debug.LogError(Time.frameCount%100 + ":::"+ Mathf.Lerp(0,100,(Time.frameCount%100)/100f));
+                lb.Enqueue(
+                    new Vector3(
+                        Mathf.Lerp(0,100,(Time.frameCount%100)/100f),
+                        calc.velocity.x * 100,
+                        0f)
+                );
                 
 //                SetPosition(
 //                    transforms,
