@@ -207,53 +207,6 @@ namespace NeuronDataReaderManaged
             while (receivingThread.IsAlive) ;
         }
 
-//        public void DoReceive()
-//        {
-//            while (!exitFlag)
-//            {
-//                int recvSize = 0;
-//                Receive(recvBuffer, recvBufferSize, out recvSize, 0);
-//
-//                if (reserveBuffer == null)
-//                {
-//                    reserveBuffer = new byte[reserveBufferSize];
-//                }
-//
-//                Buffer.BlockCopy(recvBuffer, 0, reserveBuffer, reserveSize, recvSize);
-//                reserveSize += recvSize;
-//
-//                if (reserveSize >= headerSize)
-//                {
-//                    BvhDataHeader header = AcquireHeader(reserveBuffer);
-//                    if (ValidateHeader(header))
-//                    {
-//                        // check complete packet
-//                        int packetSize = headerSize + (int) header.DataCount * sizeof(float);
-//                        //Debug.LogFormat( "reserveSize {0} >= {1} packetSize", reserveSize, packetSize );
-//                        if (reserveSize >= packetSize)
-//                        {
-//                            //Debug.LogWarningFormat( "received packet received size = {0}", reserveSize );
-//                            if (NeuronDataReader.frameDataReceivedCallback != null)
-//                            {
-//                                AcquireData(reserveBuffer, header);
-//                                NeuronDataReader.frameDataReceivedCallback(IntPtr.Zero, GetHashValue(), pinnedHeader,
-//                                    pinnedData);
-//                            }
-//
-//                            // clean reserveBuffer
-//                            Buffer.BlockCopy(reserveBuffer, packetSize, reserveBuffer, 0, reserveSize - packetSize);
-//                            reserveSize -= packetSize;
-//                        }
-//                    }
-//                    else
-//                    {
-//                        Debug.LogErrorFormat("Invalid packet HeadToken = {0} TailToken = {1} received size = {2}",
-//                            header.Token1.ToString("X4"), header.Token2.ToString("X4"), recvSize);
-//                    }
-//                }
-//            }
-//        }
-
         public void CalcDoReceive()
         {
             while (!exitFlag)
@@ -303,17 +256,6 @@ namespace NeuronDataReaderManaged
             }
         }
 
-        BvhDataHeader AcquireHeader(byte[] buffer)
-        {
-            if (pinnedHeader == IntPtr.Zero)
-            {
-                pinnedHeader = Marshal.AllocHGlobal(headerSize);
-            }
-
-            Marshal.Copy(buffer, 0, pinnedHeader, headerSize);
-            return (BvhDataHeader) Marshal.PtrToStructure(pinnedHeader, typeof(BvhDataHeader));
-        }
-
         CalcDataHeader CalcAcquireHeader(byte[] buffer)
         {
             if (pinnedHeader == IntPtr.Zero)
@@ -332,19 +274,6 @@ namespace NeuronDataReaderManaged
                 Marshal.FreeHGlobal(pinnedHeader);
                 pinnedHeader = IntPtr.Zero;
             }
-        }
-
-        void AcquireData(byte[] buffer, BvhDataHeader header)
-        {
-            int requiredSize = (int) header.DataCount * sizeof(float);
-            if (pinnedHeader == IntPtr.Zero || dataSize < requiredSize)
-            {
-                ReleaseData();
-                pinnedData = Marshal.AllocHGlobal(requiredSize);
-                dataSize = requiredSize;
-            }
-
-            Marshal.Copy(buffer, 64, pinnedData, requiredSize);
         }
 
         void AcquireData(byte[] buffer, CalcDataHeader header)
@@ -379,11 +308,6 @@ namespace NeuronDataReaderManaged
                 buffer[i + 1] = buffer[i];
                 buffer[i] = temp;
             }
-        }
-
-        bool ValidateHeader(BvhDataHeader header)
-        {
-            return header.Token1 == 0xDDFF && header.Token2 == 0xEEFF;
         }
 
         bool CalcValidateHeader(CalcDataHeader header)

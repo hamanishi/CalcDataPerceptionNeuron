@@ -153,51 +153,19 @@ namespace Neuron
         }
 
         // apply transforms extracted from actor mocap data to bones
-//		public static void ApplyMotion( NeuronActor actor, Transform[] transforms, Vector3[] bonePositionOffsets, Vector3[] boneRotationOffsets, float hipOffset )
-//		{			
-//			// apply Hips position
-//			Vector3 hipPos = actor.GetReceivedPosition (NeuronBones.Hips);
-//			SetPosition (transforms, NeuronBones.Hips, new Vector3 (hipPos.x, hipPos.y + hipOffset, hipPos.z)); // actor.GetReceivedPosition( NeuronBones.Hips ) );
-//			SetRotation( transforms, NeuronBones.Hips, actor.GetReceivedRotation( NeuronBones.Hips ) );
-//			
-//			// apply positions
-//			if( actor.withDisplacement )
-//			{
-//				for( int i = 1; i < (int)NeuronBones.NumOfBones && i < transforms.Length; ++i )
-//				{
-//
-//					SetRotation( transforms, (NeuronBones)i, actor.GetReceivedRotation( (NeuronBones)i ));
-//				}
-//			}
-//			else
-//			{
-//				// apply rotations
-//				for( int i = 1; i < (int)NeuronBones.NumOfBones && i < transforms.Length; ++i )
-//				{
-//					SetRotation( transforms, (NeuronBones)i, actor.GetReceivedRotation( (NeuronBones)i ) );
-//				}
-//			}
-//		}
-
-        // apply transforms extracted from actor mocap data to bones
         public static void ApplyCalcMotion(NeuronActor actor, Transform[] transforms, Vector3[] bonePositionOffsets,
             Vector3[] boneRotationOffsets, float hipOffset)
         {
-            // apply Hips position
             var hipPos = actor.GetCalcReceivedPosition(NeuronBones.Hips);
 
             SetPosition(transforms, NeuronBones.Hips,
                 new Vector3(hipPos.position.x, hipPos.position.y + hipOffset,
-                    hipPos.position.z)); // actor.GetReceivedPosition( NeuronBones.Hips ) );
-            //SetRotation( transforms, NeuronBones.Hips, actor.GetReceivedRotation( NeuronBones.Hips ) );
-
+                    hipPos.position.z));
 
             //Debug.Log("transform length:" + transforms.Length);
             //for (var i = 1; i < 22 && i < transforms.Length; i++)
             for (var i = 1; i < 21; i++)
             {
-                //Debug.Log("i:"+ i);
-
                 var calc = actor.GetCalcReceivedPosition((NeuronBones) i);
                 GameObject.Find("debug").GetComponent<debugJoints>().joints[i].transform.position = calc.position;
 
@@ -213,35 +181,8 @@ namespace Neuron
                         0f)
                 );
                 
-//                SetPosition(
-//                    transforms,
-//                    (NeuronBones) i,
-//                    actor.GetCalcReceivedPosition((NeuronBones) i)
-//                );
-                //					SetRotation( transforms, (NeuronBones)i, actor.GetReceivedRotation( (NeuronBones)i ) );
             }
 
-//
-//            // apply positions
-//            if (actor.withDisplacement)
-//            {
-//                Debug.Log("hoge:" + transforms.Length);
-//                for (int i = 1; i < (int) NeuronBones.NumOfBones && i < transforms.Length; ++i)
-//                {
-//                    SetPosition(transforms, (NeuronBones) i, actor.GetCalcReceivedPosition((NeuronBones) i));
-//                    //SetRotation( transforms, (NeuronBones)i, actor.GetReceivedRotation( (NeuronBones)i ));
-//                }
-//            }
-//            else
-//            {
-//                //Debug.Log("huga:"+transforms.Length);
-//                // apply rotations
-//                for (int i = 1; i < (int) NeuronBones.NumOfBones && i < transforms.Length; ++i)
-//                {
-//                    SetPosition(transforms, (NeuronBones) i, actor.GetCalcReceivedPosition((NeuronBones) i));
-////					SetRotation( transforms, (NeuronBones)i, actor.GetReceivedRotation( (NeuronBones)i ) );
-//                }
-//            }
         }
 
         // apply Transforms of src bones to dest Rigidbody Components of bone

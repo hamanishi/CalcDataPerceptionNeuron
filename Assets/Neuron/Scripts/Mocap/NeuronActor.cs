@@ -206,27 +206,6 @@ namespace Neuron
                    DateTime.Now.Millisecond;
         }
 
-//		public Vector3 GetReceivedPosition( NeuronBones bone )
-//		{
-//			Debug.Log("getreceive postion:" + bone);
-//			int offset = 0;
-//			if( header.bWithReference != 0 )
-//			{
-//				// skip reference
-//				offset += 6;
-//			}
-//			
-//			// got bone position data only when displacement is open or the bone is hips
-//			if( header.bWithDisp != 0 || bone == NeuronBones.Hips )
-//			{
-//				// Hips position + Hips rotation + 58 * ( position + rotation )
-//				offset += (int)bone * 6;
-//				return new Vector3( -data[offset] * NeuronUnityLinearScale, data[offset+1] * NeuronUnityLinearScale, data[offset+2] * NeuronUnityLinearScale );
-//			}
-//			
-//			return Vector3.zero;
-//		}
-
         public CalcDataBody GetCalcReceivedPosition(NeuronBones bone)
         {
             //Debug.Log("getcalcreceive postion:" + bone);
